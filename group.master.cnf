@@ -1,0 +1,27 @@
+# ***作为主库时的配置***
+[mysqld]
+port=3306
+skip_name_resolve = 1
+skip_symbolic_links = yes
+lower_case_table_names = 1
+explicit_defaults_for_timestamp = ON
+character_set_server = utf8
+collation_server = utf8_general_ci
+
+server_id = 1
+
+# 开启binlog日志
+log_bin = mysql-bin
+binlog_format = STATEMENT
+
+# 指定不记录日志的库
+binlog-ignore-db=mysql
+binlog-ignore-db=information_schema
+
+# 自增长的数量
+auto-increment-increment=2
+# 偏移量
+auto-increment-offset=1
+
+# 一般情况下，从库不会将从主库获取的更新写入binlog日志，这样在做级联的时候数据不能更新，开启此项后，从库会把更新写进binlog日志。
+log-slave-updates

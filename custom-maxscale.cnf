@@ -1,0 +1,133 @@
+# MaxScale documentation:
+# https://mariadb.com/kb/en/mariadb-maxscale-6/
+
+# Global parameters
+#
+# Complete list of configuration options:
+# https://mariadb.com/kb/en/mariadb-maxscale-6-mariadb-maxscale-configuration-guide/
+
+# [maxscale]
+# threads=4
+# ms_timestamp=1
+# log_info=1
+# log_augmentation=1
+# admin_host=0.0.0.0
+# admin_secure_gui=false
+
+# Server definitions
+#
+# Set the address of the server to the network
+# address of a MariaDB server.
+#
+
+[server1]
+type=server
+address=mysql-master-1
+port=3306
+protocol=MySQLBackend
+
+[server2]
+type=server
+address=mysql-slave-1
+port=3306
+protocol=MySQLBackend
+
+[server3]
+type=server
+address=mysql-slave-2
+port=3306
+protocol=MySQLBackend
+
+# Monitor for the servers
+#
+# This will keep MaxScale aware of the state of the servers.
+# MariaDB Monitor documentation:
+# https://mariadb.com/kb/en/maxscale-6-monitors/
+
+[MySQL-Monitor]
+type=monitor
+module=mysqlmon
+servers=server1,server2,server3
+user=maxmon
+password=123456
+# 每隔2秒探测一次
+monitor_interval=4000
+# 打开自动故障转移
+auto_failover=true
+# 打开自动重新加入
+auto_rejoin=true
+# slave 全部失效时 master 支撑全部请求
+detect_stale_master=true
+
+
+# Service definitions
+#
+# Service Definition for a read-only service and
+# a read/write splitting service.
+#
+
+# ReadConnRoute documentation:
+# https://mariadb.com/kb/en/mariadb-maxscale-6-readconnroute/
+
+[Read-Only-Service]
+type=service
+router=readconnroute
+servers=server1,server2,server3
+user=maxrou
+password=123456
+# router_options=slave
+# 允许用户登录执行
+enable_root_user=1
+
+# ReadWriteSplit documentation:
+# https://mariadb.com/kb/en/mariadb-maxscale-6-readwritesplit/
+
+[Read-Write-Service]
+type=service
+router=readwritesplit
+# router_options=master,slave
+servers=server1,server2,server3
+enable_root_user=1
+user=maxrou
+password=123456
+# 当主服务器挂了时，客户端的写入操作将会返回错误，服务器以只读模式运行。
+# 如果没有设置此值，那么当客户端执行写入操作时，MaxScale将会直接断开连接。
+master_failure_mode=error_on_write
+# 配合上一个选项取消只读模式，客户端的写入请求将会被重新处理。
+master_reconnection=true
+
+# 默认读是不被路由到master，设置为true允许master用于读取
+master_accept_reads=false
+# 设置路由器会话随时使用的最大从站数量
+# max_slave_connections=2
+# auth_all_servers=true
+# 身份验证失败和警告的日志记录，记录那些试图连接到MaxScale和来自哪里
+# log_auth_warnings=true 
+filters=Hint  
+# 允许slave落后master多少秒
+max_slave_replication_lag=3600
+
+[Hint]
+type=filter
+module=hintfilter
+
+
+# Listener definitions for the services
+#
+# These listeners represent the ports the
+# services will listen on.
+#
+
+[Read-Only-Listener]
+type=listener
+service=Read-Only-Service
+protocol=MySQLClient
+address=0.0.0.0
+port=4008
+
+[Read-Write-Listener]
+type=listener
+service=Read-Write-Service
+protocol=MySQLClient
+address=0.0.0.0
+port=4006
